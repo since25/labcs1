@@ -1,8 +1,8 @@
 export const users = [
-  { id: "admin", name: "管理员", role: "admin", password: "admin123" },
-  { id: "wang", name: "王老师", role: "user", password: "wanglab01" },
-  { id: "cell", name: "细胞组", role: "user", password: "cell01" },
-  { id: "chen", name: "陈同学", role: "user", password: "chen01" }
+  { id: "admin", name: "管理员", role: "admin", password: "admin123", telegramChatIds: [] },
+  { id: "wang", name: "王老师", role: "user", password: "wanglab01", telegramChatIds: [] },
+  { id: "cell", name: "细胞组", role: "user", password: "cell01", telegramChatIds: [] },
+  { id: "chen", name: "陈同学", role: "user", password: "chen01", telegramChatIds: [] }
 ];
 
 export const db = {
@@ -131,7 +131,3 @@ export const db = {
   ],
   operations: []
 };
-
-export function publicUsers() {
-  return users.map(({ password, ...user }) => user);
-}
