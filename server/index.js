@@ -1,9 +1,28 @@
 import http from "node:http";
 import { randomUUID } from "node:crypto";
 import { URL } from "node:url";
+import { readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { join, extname, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { db, publicUsers, users } from "./data.js";
 
-const PORT = Number(process.env.API_PORT || 8788);
+const PORT = Number(process.env.PORT || 8788);
+const HOST = process.env.HOST || "127.0.0.1";
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const DIST = join(__dirname, "../dist");
+
+const MIME = {
+  ".html": "text/html; charset=utf-8",
+  ".js":   "application/javascript; charset=utf-8",
+  ".css":  "text/css; charset=utf-8",
+  ".svg":  "image/svg+xml",
+  ".png":  "image/png",
+  ".ico":  "image/x-icon",
+  ".json": "application/json",
+  ".woff2":"font/woff2",
+};
+
 const sessions = new Map();
 
 const server = http.createServer(async (req, res) => {
@@ -14,8 +33,8 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, "127.0.0.1", () => {
-  console.log(`API server ready at http://127.0.0.1:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`Server ready at http://${HOST}:${PORT}`);
 });
 
 async function route(req, res) {
@@ -27,6 +46,24 @@ async function route(req, res) {
   }
 
   const url = new URL(req.url, `http://${req.headers.host}`);
+
+  // non-API requests → serve static files (no auth required)
+  if (!url.pathname.startsWith("/api/")) {
+    if (req.method === "GET" && existsSync(DIST)) {
+      let filePath = join(DIST, url.pathname);
+      const { stat } = await import("node:fs/promises");
+      const isDir = await stat(filePath).then(s => s.isDirectory()).catch(() => true);
+      if (isDir) filePath = join(DIST, "index.html");
+      try {
+        const data = await readFile(filePath);
+        res.writeHead(200, { "Content-Type": MIME[extname(filePath)] || "application/octet-stream" });
+        res.end(data);
+        return;
+      } catch { /* fall through */ }
+    }
+    sendJson(res, 404, { error: "Not found" });
+    return;
+  }
 
   if (req.method === "POST" && url.pathname === "/api/login") {
     const body = await readJson(req);
@@ -180,7 +217,7 @@ function sendJson(res, status, payload) {
 }
 
 function setCors(res) {
-  res.setHeader("Access-Control-Allow-Origin", "http://127.0.0.1:5174");
+  res.setHeader("Access-Control-Allow-Origin", `http://${HOST}:${PORT}`);
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
 }
